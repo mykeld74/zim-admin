@@ -43,7 +43,7 @@ const cloudinaryAdapter = () => {
     name: 'cloudinary',
     handleUpload: async ({ file }: { file: any }) => {
       const originalFilename = file.filename
-      
+
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
@@ -66,7 +66,7 @@ const cloudinaryAdapter = () => {
 
       // Keep the original filename unchanged
       file.filesize = (result as any).bytes ?? file.filesize
-      
+
       return file
     },
     handleDelete: async ({ filename }: { filename: string }) => {
