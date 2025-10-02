@@ -40,9 +40,18 @@ if (
 
 const cloudinaryAdapter = () => ({
   name: 'cloudinary',
-  handleUpload: async ({ file }) => {
+  handleUpload: async ({
+    file,
+  }: {
+    file: { buffer: Buffer; filename: string; filesize: number; mimeType: string }
+  }) => {
     try {
-      const result = await new Promise((resolve, reject) => {
+      const result = await new Promise<{
+        public_id: string
+        bytes: number
+        resource_type: string
+        format: string
+      }>((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             resource_type: 'auto',
@@ -57,24 +66,25 @@ const cloudinaryAdapter = () => ({
       })
 
       // store Cloudinary public_id; do not add extension
-      file.filename = (result as any).public_id
-      file.filesize = (result as any).bytes ?? file.filesize
+      file.filename = result.public_id
+      file.filesize = result.bytes ?? file.filesize
       // best-effort mime
-      const rt = (result as any).resource_type as string | undefined
-      const fmt = (result as any).format as string | undefined
+      const rt = result.resource_type
+      const fmt = result.format
       file.mimeType = rt === 'image' && fmt ? `image/${fmt}` : file.mimeType
     } catch (error) {
       console.error('Cloudinary upload error:', error)
       throw error
     }
   },
-  handleDelete: async ({ filename }) => {
+  handleDelete: async ({ filename }: { filename: string }) => {
     // filename is the stored public_id
     await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
   },
   // build URL from public_id
-  generateFileURL: ({ filename }) =>
+  generateFileURL: ({ filename }: { filename: string }) =>
     cloudinary.url(filename, { secure: true, resource_type: 'auto' }),
+  staticHandler: () => new Response('Not implemented', { status: 501 }),
 })
 
 export default buildConfig({
