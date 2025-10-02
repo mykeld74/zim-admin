@@ -33,60 +33,30 @@ console.error('API secret set:', !!process.env.CLOUDINARY_API_SECRET)
 console.error('Folder:', process.env.CLOUDINARY_FOLDER || 'default')
 console.error('=== END CLOUDINARY SETUP ===')
 
-console.log('Cloudinary config in production:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
-  api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
-  api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET',
-  folder: process.env.CLOUDINARY_FOLDER || 'NOT SET',
-})
-
 const cloudinaryAdapter = () => {
-  console.error('=== CLOUDINARY ADAPTER INITIALIZED ===')
   return {
     name: 'cloudinary',
-    handleUpload: async ({ file }: { file: any }) => {
-      console.error('=== UPLOAD HANDLER CALLED ===')
-      console.error('File:', file.filename, 'Size:', file.filesize)
+    handleUpload: async ({ file }) => {
+      const originalFilename = file.filename
 
-      try {
-        const result = await new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            {
-              resource_type: 'auto' as const,
-              folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
-              use_filename: true,
-              unique_filename: false,
-              overwrite: false,
-            },
-            (err, res) => (err ? reject(err) : resolve(res!)),
-          )
-          stream.end(file.buffer)
-        })
-
-        file.filename = (result as any).public_id
-        file.filesize = (result as any).bytes ?? file.filesize
-        const rt = (result as any).resource_type
-        const fmt = (result as any).format
-        file.mimeType = rt === 'image' && fmt ? `image/${fmt}` : file.mimeType
-
-        console.error('Upload completed:', {
-          publicId: (result as any).public_id,
-          bytes: (result as any).bytes,
-        })
-      } catch (error) {
-        console.error('Cloudinary upload error:', error)
-        throw error
-      }
-    },
-    handleDelete: async ({ filename }: { filename: string }) => {
-      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' as const })
-    },
-    generateFileURL: ({ filename }: { filename: string }) => {
-      return cloudinary.url(filename, {
-        secure: true,
-        resource_type: 'auto' as const,
-        quality: 'auto',
-        fetch_format: 'auto',
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'auto',
+            folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
+            use_filename: true,
+            unique_filename: false,
+            public_id: originalFilename,
+          },
+          (err, res) => {
+            if (err) {
+              reject(err)
+            } else {
+              resolve(res!)
+            }
+          },
+        )
+        stream.end(file.buffer)
       })
     },
     staticHandler: async (req: any) => {
@@ -97,6 +67,33 @@ const cloudinaryAdapter = () => {
       const url = cloudinary.url(filename, {
         secure: true,
         resource_type: 'auto' as const,
+        quality: 'auto',
+        fetch_format: 'auto',
+      })
+      return Response.redirect(url, 302)
+    },
+  }
+}
+
+      // Keep the original filename unchanged
+      file.filesize = (result as any).bytes ?? file.filesize
+
+      return file
+    },
+    handleDelete: async ({ filename }) => {
+      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
+    },
+    generateFileURL: ({ filename }) => {
+      return cloudinary.url(filename, { secure: true, resource_type: 'auto' })
+    },
+    staticHandler: async (req: any) => {
+      const filename = req.params?.filename || req.query?.filename
+      if (!filename) {
+        return new Response('File not found', { status: 404 })
+      }
+      const url = cloudinary.url(filename, {
+        secure: true,
+        resource_type: 'auto',
         quality: 'auto',
         fetch_format: 'auto',
       })
