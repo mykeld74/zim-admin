@@ -69,6 +69,9 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    updates: Update;
+    kids: Kid;
+    sponsors: Sponsor;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -77,6 +80,9 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    updates: UpdatesSelect<false> | UpdatesSelect<true>;
+    kids: KidsSelect<false> | KidsSelect<true>;
+    sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -119,6 +125,13 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  firstName: string;
+  lastName: string;
+  /**
+   * Auto-generated from first and last name
+   */
+  name?: string | null;
+  level: 'admin' | 'editor' | 'sponsor';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -158,6 +171,65 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "updates".
+ */
+export interface Update {
+  id: number;
+  title: string;
+  /**
+   * Auto-generated from title if left blank
+   */
+  slug?: string | null;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "kids".
+ */
+export interface Kid {
+  id: number;
+  name: string;
+  sponsors?: (number | Sponsor)[] | null;
+  birthday?: string | null;
+  featuredImage?: (number | null) | Media;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors".
+ */
+export interface Sponsor {
+  id: number;
+  firstName: string;
+  lastName: string;
+  /**
+   * Auto-generated from first and last name
+   */
+  name?: string | null;
+  email: string;
+  phoneNumber?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -170,6 +242,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'updates';
+        value: number | Update;
+      } | null)
+    | ({
+        relationTo: 'kids';
+        value: number | Kid;
+      } | null)
+    | ({
+        relationTo: 'sponsors';
+        value: number | Sponsor;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -218,6 +302,10 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  firstName?: T;
+  lastName?: T;
+  name?: T;
+  level?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -252,6 +340,42 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "updates_select".
+ */
+export interface UpdatesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "kids_select".
+ */
+export interface KidsSelect<T extends boolean = true> {
+  name?: T;
+  sponsors?: T;
+  birthday?: T;
+  featuredImage?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors_select".
+ */
+export interface SponsorsSelect<T extends boolean = true> {
+  firstName?: T;
+  lastName?: T;
+  name?: T;
+  email?: T;
+  phoneNumber?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
