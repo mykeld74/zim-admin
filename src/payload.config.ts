@@ -38,10 +38,12 @@ if (
   })
 }
 
-const cloudinaryAdapter = () => ({
-  name: 'cloudinary',
-  handleUpload: async ({ file }) => {
-    try {
+const cloudinaryAdapter = () => {
+  return {
+    name: 'cloudinary',
+    handleUpload: async ({ file }) => {
+      const originalFilename = file.filename
+
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
@@ -49,33 +51,45 @@ const cloudinaryAdapter = () => ({
             folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
             use_filename: true,
             unique_filename: false,
-            overwrite: false,
+            public_id: originalFilename,
           },
-          (err, res) => (err ? reject(err) : resolve(res!)),
+          (err, res) => {
+            if (err) {
+              reject(err)
+            } else {
+              resolve(res!)
+            }
+          },
         )
         stream.end(file.buffer)
       })
 
-      // store Cloudinary public_id; do not add extension
-      file.filename = (result as any).public_id
+      // Keep the original filename unchanged
       file.filesize = (result as any).bytes ?? file.filesize
-      // best-effort mime
-      const rt = (result as any).resource_type as string | undefined
-      const fmt = (result as any).format as string | undefined
-      file.mimeType = rt === 'image' && fmt ? `image/${fmt}` : file.mimeType
-    } catch (error) {
-      console.error('Cloudinary upload error:', error)
-      throw error
-    }
-  },
-  handleDelete: async ({ filename }) => {
-    // filename is the stored public_id
-    await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
-  },
-  // build URL from public_id
-  generateFileURL: ({ filename }) =>
-    cloudinary.url(filename, { secure: true, resource_type: 'auto' }),
-})
+
+      return file
+    },
+    handleDelete: async ({ filename }) => {
+      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
+    },
+    generateFileURL: ({ filename }) => {
+      return cloudinary.url(filename, { secure: true, resource_type: 'auto' })
+    },
+    staticHandler: async (req: any) => {
+      const filename = req.params?.filename || req.query?.filename
+      if (!filename) {
+        return new Response('File not found', { status: 404 })
+      }
+      const url = cloudinary.url(filename, {
+        secure: true,
+        resource_type: 'auto',
+        quality: 'auto',
+        fetch_format: 'auto',
+      })
+      return Response.redirect(url, 302)
+    },
+  }
+}
 
 export default buildConfig({
   admin: {
