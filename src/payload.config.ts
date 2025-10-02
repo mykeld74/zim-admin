@@ -24,21 +24,26 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || '',
 })
 
-// Force log to appear in production
-console.error('=== CLOUDINARY SETUP ===')
-console.error('Environment:', process.env.NODE_ENV)
-console.error('Cloud name set:', !!process.env.CLOUDINARY_CLOUD_NAME)
-console.error('API key set:', !!process.env.CLOUDINARY_API_KEY)
-console.error('API secret set:', !!process.env.CLOUDINARY_API_SECRET)
-console.error('Folder:', process.env.CLOUDINARY_FOLDER || 'default')
-console.error('=== END CLOUDINARY SETUP ===')
+if (
+  !process.env.CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET
+) {
+  throw new Error('Cloudinary env vars missing')
+} else {
+  console.log('Cloudinary config:', {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY?.substring(0, 8) + '...',
+    api_secret: process.env.CLOUDINARY_API_SECRET?.substring(0, 8) + '...',
+  })
+}
 
 const cloudinaryAdapter = () => {
   return {
     name: 'cloudinary',
-    handleUpload: async ({ file }) => {
+    handleUpload: async ({ file }: { file: any }) => {
       const originalFilename = file.filename
-
+      
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
@@ -58,32 +63,16 @@ const cloudinaryAdapter = () => {
         )
         stream.end(file.buffer)
       })
-    },
-    staticHandler: async (req: any) => {
-      const filename = req.params?.filename || req.query?.filename
-      if (!filename) {
-        return new Response('File not found', { status: 404 })
-      }
-      const url = cloudinary.url(filename, {
-        secure: true,
-        resource_type: 'auto' as const,
-        quality: 'auto',
-        fetch_format: 'auto',
-      })
-      return Response.redirect(url, 302)
-    },
-  }
-}
 
       // Keep the original filename unchanged
       file.filesize = (result as any).bytes ?? file.filesize
-
+      
       return file
     },
-    handleDelete: async ({ filename }) => {
+    handleDelete: async ({ filename }: { filename: string }) => {
       await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
     },
-    generateFileURL: ({ filename }) => {
+    generateFileURL: ({ filename }: { filename: string }) => {
       return cloudinary.url(filename, { secure: true, resource_type: 'auto' })
     },
     staticHandler: async (req: any) => {
