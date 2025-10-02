@@ -24,6 +24,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || '',
 })
 
+// Force log to appear in production
+console.error('=== CLOUDINARY SETUP ===')
+console.error('Environment:', process.env.NODE_ENV)
+console.error('Cloud name set:', !!process.env.CLOUDINARY_CLOUD_NAME)
+console.error('API key set:', !!process.env.CLOUDINARY_API_KEY)
+console.error('API secret set:', !!process.env.CLOUDINARY_API_SECRET)
+console.error('Folder:', process.env.CLOUDINARY_FOLDER || 'default')
+console.error('=== END CLOUDINARY SETUP ===')
+
 console.log('Cloudinary config in production:', {
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
   api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
@@ -32,7 +41,8 @@ console.log('Cloudinary config in production:', {
 })
 
 const cloudinaryAdapter = (args: { collection: any; prefix?: string }) => {
-  console.log('Cloudinary adapter called with args:', Object.keys(args))
+  console.error('=== CLOUDINARY ADAPTER INITIALIZED ===')
+  console.error('Args:', Object.keys(args))
   return {
     name: 'cloudinary',
     handleUpload: async ({
@@ -40,6 +50,10 @@ const cloudinaryAdapter = (args: { collection: any; prefix?: string }) => {
     }: {
       file: { buffer: Buffer; filename: string; filesize: number; mimeType: string }
     }) => {
+      // Force error log to appear in production
+      console.error('=== UPLOAD HANDLER CALLED ===')
+      console.error('File:', file.filename, 'Size:', file.filesize)
+
       try {
         console.log('Starting Cloudinary upload for file:', file.filename, 'size:', file.filesize)
 
