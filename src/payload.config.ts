@@ -31,7 +31,7 @@ console.log('Cloudinary config in production:', {
   folder: process.env.CLOUDINARY_FOLDER || 'NOT SET',
 })
 
-const cloudinaryAdapter = (args: any) => {
+const cloudinaryAdapter = (args: { collection: any; prefix?: string }) => {
   console.log('Cloudinary adapter called with args:', Object.keys(args))
   return {
     name: 'cloudinary',
@@ -50,7 +50,7 @@ const cloudinaryAdapter = (args: any) => {
           format: string
         }>((resolve, reject) => {
           const uploadOptions = {
-            resource_type: 'auto',
+            resource_type: 'auto' as const,
             folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
             use_filename: true,
             unique_filename: false,
@@ -94,21 +94,22 @@ const cloudinaryAdapter = (args: any) => {
     },
     handleDelete: async ({ filename }: { filename: string }) => {
       // filename is the stored public_id
-      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
+      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' as const })
     },
     // build URL from public_id
     generateFileURL: ({ filename }: { filename: string }) => {
       const url = cloudinary.url(filename, {
         secure: true,
-        resource_type: 'auto',
+        resource_type: 'auto' as const,
         quality: 'auto',
         fetch_format: 'auto',
       })
       console.log('Generated Cloudinary URL:', url, 'for filename:', filename)
       return url
     },
-    staticHandler: async ({ filename, collection }: { filename: string; collection: any }) => {
-      console.log('Static handler called with filename:', filename, 'collection:', collection?.slug)
+    staticHandler: async (req: any) => {
+      const filename = req.params?.filename || req.query?.filename
+      console.log('Static handler called with filename:', filename)
 
       if (!filename) {
         console.log('No filename provided, returning 404')
@@ -118,7 +119,7 @@ const cloudinaryAdapter = (args: any) => {
       try {
         const url = cloudinary.url(filename, {
           secure: true,
-          resource_type: 'auto',
+          resource_type: 'auto' as const,
           quality: 'auto',
           fetch_format: 'auto',
         })
