@@ -40,66 +40,38 @@ console.log('Cloudinary config in production:', {
   folder: process.env.CLOUDINARY_FOLDER || 'NOT SET',
 })
 
-const cloudinaryAdapter = (args: { collection: any; prefix?: string }) => {
+const cloudinaryAdapter = () => {
   console.error('=== CLOUDINARY ADAPTER INITIALIZED ===')
-  console.error('Args:', Object.keys(args))
   return {
     name: 'cloudinary',
-    handleUpload: async ({
-      file,
-    }: {
-      file: { buffer: Buffer; filename: string; filesize: number; mimeType: string }
-    }) => {
-      // Force error log to appear in production
+    handleUpload: async ({ file }: { file: any }) => {
       console.error('=== UPLOAD HANDLER CALLED ===')
       console.error('File:', file.filename, 'Size:', file.filesize)
 
       try {
-        console.log('Starting Cloudinary upload for file:', file.filename, 'size:', file.filesize)
-
-        const result = await new Promise<{
-          public_id: string
-          bytes: number
-          resource_type: string
-          format: string
-        }>((resolve, reject) => {
-          const uploadOptions = {
-            resource_type: 'auto' as const,
-            folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
-            use_filename: true,
-            unique_filename: false,
-            overwrite: false,
-          }
-
-          console.log('Cloudinary upload options:', uploadOptions)
-
-          const stream = cloudinary.uploader.upload_stream(uploadOptions, (err, res) => {
-            if (err) {
-              console.error('Cloudinary upload error:', err)
-              reject(err)
-            } else {
-              console.log('Cloudinary upload success:', res)
-              resolve(res!)
-            }
-          })
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              resource_type: 'auto' as const,
+              folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
+              use_filename: true,
+              unique_filename: false,
+              overwrite: false,
+            },
+            (err, res) => (err ? reject(err) : resolve(res!)),
+          )
           stream.end(file.buffer)
         })
 
-        // store Cloudinary public_id; do not add extension
-        file.filename = result.public_id
-        file.filesize = result.bytes ?? file.filesize
-        // best-effort mime
-        const rt = result.resource_type
-        const fmt = result.format
+        file.filename = (result as any).public_id
+        file.filesize = (result as any).bytes ?? file.filesize
+        const rt = (result as any).resource_type
+        const fmt = (result as any).format
         file.mimeType = rt === 'image' && fmt ? `image/${fmt}` : file.mimeType
 
-        console.log('Upload completed:', {
-          originalFilename: file.filename,
-          publicId: result.public_id,
-          bytes: result.bytes,
-          resourceType: rt,
-          format: fmt,
-          mimeType: file.mimeType,
+        console.error('Upload completed:', {
+          publicId: (result as any).public_id,
+          bytes: (result as any).bytes,
         })
       } catch (error) {
         console.error('Cloudinary upload error:', error)
@@ -107,42 +79,28 @@ const cloudinaryAdapter = (args: { collection: any; prefix?: string }) => {
       }
     },
     handleDelete: async ({ filename }: { filename: string }) => {
-      // filename is the stored public_id
       await cloudinary.uploader.destroy(filename, { resource_type: 'auto' as const })
     },
-    // build URL from public_id
     generateFileURL: ({ filename }: { filename: string }) => {
+      return cloudinary.url(filename, {
+        secure: true,
+        resource_type: 'auto' as const,
+        quality: 'auto',
+        fetch_format: 'auto',
+      })
+    },
+    staticHandler: async (req: any) => {
+      const filename = req.params?.filename || req.query?.filename
+      if (!filename) {
+        return new Response('File not found', { status: 404 })
+      }
       const url = cloudinary.url(filename, {
         secure: true,
         resource_type: 'auto' as const,
         quality: 'auto',
         fetch_format: 'auto',
       })
-      console.log('Generated Cloudinary URL:', url, 'for filename:', filename)
-      return url
-    },
-    staticHandler: async (req: any) => {
-      const filename = req.params?.filename || req.query?.filename
-      console.log('Static handler called with filename:', filename)
-
-      if (!filename) {
-        console.log('No filename provided, returning 404')
-        return new Response('File not found', { status: 404 })
-      }
-
-      try {
-        const url = cloudinary.url(filename, {
-          secure: true,
-          resource_type: 'auto' as const,
-          quality: 'auto',
-          fetch_format: 'auto',
-        })
-        console.log('Static handler redirecting to:', url, 'for filename:', filename)
-        return Response.redirect(url, 302)
-      } catch (error) {
-        console.error('Error generating Cloudinary URL:', error)
-        return new Response('Error generating file URL', { status: 500 })
-      }
+      return Response.redirect(url, 302)
     },
   }
 }
