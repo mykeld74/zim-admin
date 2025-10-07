@@ -41,7 +41,7 @@ const cloudinaryAdapter = () => {
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            resource_type: 'auto',
+            resource_type: 'image',
             folder: process.env.CLOUDINARY_FOLDER || 'payload-media',
             use_filename: true,
             unique_filename: false,
@@ -61,25 +61,73 @@ const cloudinaryAdapter = () => {
       // Keep the original filename unchanged
       file.filesize = (result as any).bytes ?? file.filesize
 
-      return file
-    },
-    handleDelete: async ({ filename }: { filename: string }) => {
-      await cloudinary.uploader.destroy(filename, { resource_type: 'auto' })
-    },
-    generateFileURL: ({ filename }: { filename: string }) => {
-      return cloudinary.url(filename, { secure: true, resource_type: 'auto' })
-    },
-    staticHandler: async (req: any) => {
-      const filename = req.params?.filename || req.query?.filename
-      if (!filename) {
-        return new Response('File not found', { status: 404 })
-      }
-      const url = cloudinary.url(filename, {
+      // Generate URL using the Cloudinary public_id (which is the original filename)
+      const publicId = (result as any).public_id
+      const filenameWithoutExt = publicId.replace(/\.[^/.]+$/, '')
+      const cloudinaryPublicId = `${process.env.CLOUDINARY_FOLDER || 'payload-media'}/${filenameWithoutExt}`
+      const cloudinaryUrl = cloudinary.url(cloudinaryPublicId, {
         secure: true,
-        resource_type: 'auto',
+        resource_type: 'image',
         quality: 'auto',
         fetch_format: 'auto',
       })
+
+      // Ensure the URL is set on the file object
+      file.url = cloudinaryUrl
+
+      return file
+    },
+    handleDelete: async ({ filename }: { filename: string }) => {
+      await cloudinary.uploader.destroy(filename, { resource_type: 'image' })
+    },
+    generateFileURL: ({ filename }: { filename: string | null | undefined }) => {
+      if (!filename) return '' as any
+      // Remove file extension from filename for URL generation
+      const filenameWithoutExt = filename.replace(/\.[^/.]+$/, '')
+      const cloudinaryPublicId = `${process.env.CLOUDINARY_FOLDER || 'payload-media'}/${filenameWithoutExt}`
+      return cloudinary.url(cloudinaryPublicId, {
+        secure: true,
+        resource_type: 'image',
+        quality: 'auto',
+        fetch_format: 'auto',
+      })
+    },
+    staticHandler: async (req: any) => {
+      const folder = process.env.CLOUDINARY_FOLDER || 'payload-media'
+      const filenameParam = req.params?.filename || req.query?.filename
+      if (!filenameParam) return new Response('File not found', { status: 404 })
+
+      // Support both Express-like req.query and Next.js Request
+      let width: number | undefined
+      let height: number | undefined
+      let crop: string | undefined
+
+      try {
+        const urlObj =
+          typeof req.url === 'string' ? new URL(req.url, 'http://localhost') : undefined
+        if (urlObj) {
+          const w = urlObj.searchParams.get('width') || urlObj.searchParams.get('w')
+          const h = urlObj.searchParams.get('height') || urlObj.searchParams.get('h')
+          crop = urlObj.searchParams.get('crop') || urlObj.searchParams.get('c') || undefined
+          width = w ? Number(w) : undefined
+          height = h ? Number(h) : undefined
+        }
+      } catch {}
+
+      const filenameWithoutExt = String(filenameParam).replace(/\.[^/.]+$/, '')
+      const alreadyPrefixed = filenameWithoutExt.startsWith(`${folder}/`)
+      const publicId = alreadyPrefixed ? filenameWithoutExt : `${folder}/${filenameWithoutExt}`
+
+      const url = cloudinary.url(publicId, {
+        secure: true,
+        resource_type: 'image',
+        quality: 'auto',
+        fetch_format: 'auto',
+        width,
+        height,
+        crop: crop as any,
+      })
+
       return Response.redirect(url, 302)
     },
   }
@@ -111,6 +159,17 @@ export default buildConfig({
         media: {
           adapter: cloudinaryAdapter,
           disableLocalStorage: true,
+          generateFileURL: ({ filename }) => {
+            if (!filename) return '' as any
+            const filenameWithoutExt = filename.replace(/\.[^/.]+$/, '')
+            const cloudinaryPublicId = `${process.env.CLOUDINARY_FOLDER || 'payload-media'}/${filenameWithoutExt}`
+            return cloudinary.url(cloudinaryPublicId, {
+              secure: true,
+              resource_type: 'image',
+              quality: 'auto',
+              fetch_format: 'auto',
+            })
+          },
         },
       },
     }),

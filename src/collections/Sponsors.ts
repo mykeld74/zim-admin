@@ -26,6 +26,7 @@ export const Sponsors: CollectionConfig = {
       required: false,
       admin: {
         readOnly: true,
+        hidden: true,
         description: 'Auto-generated from first and last name',
       },
     },
@@ -39,17 +40,16 @@ export const Sponsors: CollectionConfig = {
       type: 'text',
       required: false,
     },
+    // Linked kids manager removed; manage sponsorships from Kids collection only
     {
-      name: 'linkedKidsManager',
-      label: 'Linked Kids',
-      type: 'ui',
+      name: 'sponsoredKids',
+      label: 'Sponsored Kids',
+      type: 'text',
       admin: {
-        components: {
-          Field: './app/(payload)/admin/LinkedKidsManager#default',
-        },
+        readOnly: true,
+        description: 'Auto-populated from Kids',
       },
     },
-    // sponsoredKids now via Sponsorships join table
   ],
   hooks: {
     beforeChange: [
@@ -59,7 +59,28 @@ export const Sponsors: CollectionConfig = {
         const lastName = (incoming.lastName as string | undefined) ?? ''
         const name = `${firstName} ${lastName}`.trim()
         if (name) incoming.name = name
+        delete (incoming as any).sponsoredKids
+        delete (incoming as any).sponsoredKidsList
         return incoming
+      },
+    ],
+    afterRead: [
+      async ({ doc, req }) => {
+        try {
+          const sponsorId = (doc as any)?.id
+          if (!sponsorId) return doc
+          const kids = await req.payload.find({
+            collection: 'kids',
+            where: { sponsors: { contains: sponsorId } },
+            depth: 0,
+            limit: 200,
+          })
+          ;(doc as any).sponsoredKids = kids.docs
+            .map((k: any) => k.name)
+            .filter(Boolean)
+            .join(', ')
+        } catch {}
+        return doc
       },
     ],
   },
