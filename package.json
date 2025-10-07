@@ -17,7 +17,8 @@
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --no-experimental-strip-types\" pnpm exec playwright test",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
-    "fix:media-urls": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/fix-media-urls.ts"
+    "fix:media-urls": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/fix-media-urls.ts",
+    "seed:sponsors": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/seed-sponsors-from-sheet.ts"
   },
   "dependencies": {
     "@eslint/eslintrc": "^3.3.1",

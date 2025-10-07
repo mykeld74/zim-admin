@@ -19,16 +19,35 @@ export const Updates: CollectionConfig = {
     {
       name: 'slug',
       type: 'text',
-      required: false,
       unique: true,
       admin: {
-        description: 'Auto-generated from title if left blank',
+        description: 'Auto-generated from title when empty',
       },
     },
     {
-      name: 'content',
-      type: 'richText',
-      editor: lexicalEditor(),
+      name: 'layout',
+      type: 'blocks',
+      blocks: [
+        {
+          slug: 'hero',
+          fields: [
+            { name: 'title', type: 'text', required: true },
+            { name: 'subtitle', type: 'text' },
+            { name: 'image', type: 'upload', relationTo: 'media' },
+          ],
+        },
+        {
+          slug: 'content',
+          fields: [{ name: 'body', type: 'richText' }],
+        },
+        {
+          slug: 'image',
+          fields: [
+            { name: 'media', type: 'upload', relationTo: 'media' },
+            { name: 'caption', type: 'text' },
+          ],
+        },
+      ],
     },
   ],
   hooks: {
