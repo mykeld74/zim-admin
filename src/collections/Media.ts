@@ -7,6 +7,15 @@ export const Media: CollectionConfig = {
     read: () => true,
   },
   hooks: {
+    beforeChange: [
+      ({ data }) => {
+        if (data?.filename) {
+          // Strip file extension from filename
+          data.filename = data.filename.replace(/\.[^/.]+$/, '')
+        }
+        return data
+      },
+    ],
     afterRead: [
       ({ doc }) => {
         const folder = process.env.CLOUDINARY_FOLDER || 'payload-media'
@@ -20,27 +29,7 @@ export const Media: CollectionConfig = {
           quality: 'auto',
           fetch_format: 'auto',
         })
-        const thumb = cloudinary.url(publicId, {
-          secure: true,
-          resource_type: 'image',
-          width: 240,
-          height: 240,
-          crop: 'fill',
-          quality: 'auto',
-          fetch_format: 'auto',
-        })
         ;(doc as any).url = (doc as any).url || url
-        ;(doc as any).thumbnailURL = (doc as any).thumbnailURL || thumb
-        ;(doc as any).sizes = {
-          ...((doc as any).sizes || {}),
-          thumbnail: {
-            ...((doc as any).sizes?.thumbnail || {}),
-            url: (doc as any).sizes?.thumbnail?.url || thumb,
-            width: 240,
-            height: 240,
-            mimeType: (doc as any).mimeType || 'image/jpeg',
-          },
-        }
         return doc
       },
     ],
@@ -55,13 +44,5 @@ export const Media: CollectionConfig = {
   upload: {
     focalPoint: true,
     mimeTypes: ['image/*'],
-    imageSizes: [
-      {
-        name: 'thumbnail',
-        width: 240,
-        height: 240,
-        position: 'centre',
-      },
-    ],
   },
 }
