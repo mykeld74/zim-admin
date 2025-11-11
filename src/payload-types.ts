@@ -180,6 +180,10 @@ export interface Update {
    * Auto-generated from title when empty
    */
   slug?: string | null;
+  /**
+   * Short summary used in listings and previews
+   */
+  excerpt?: string | null;
   layout?:
     | (
         | {
@@ -376,6 +380,7 @@ export interface MediaSelect<T extends boolean = true> {
 export interface UpdatesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  excerpt?: T;
   layout?:
     | T
     | {

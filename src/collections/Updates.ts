@@ -25,6 +25,13 @@ export const Updates: CollectionConfig = {
       },
     },
     {
+      name: 'excerpt',
+      type: 'textarea',
+      admin: {
+        description: 'Short summary used in listings and previews',
+      },
+    },
+    {
       name: 'layout',
       type: 'blocks',
       blocks: [
